@@ -1,0 +1,50 @@
+name: Daily notice crawler
+
+on:
+  schedule:
+    # GitHub cron uses UTC. 00:00 UTC is 08:00 in Beijing.
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-crawler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Restore processed links
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: notice-state-${{ github.run_id }}
+          restore-keys: |
+            notice-state-
+
+      - name: Create config file
+        shell: bash
+        env:
+          CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
+        run: |
+          test -n "$CONFIG_YAML"
+          printf '%s' "$CONFIG_YAML" > config.yaml
+
+      - name: Run crawler
+        env:
+          QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
+          QQ_EMAIL_AUTH_CODE: ${{ secrets.QQ_EMAIL_AUTH_CODE }}
+        run: python main.py
