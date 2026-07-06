@@ -1,4 +1,6 @@
 import json
+import os
+import re
 
 import requests
 
@@ -8,6 +10,7 @@ def summarize_article_with_local_llm(
     body,
     model="qwen2.5:1.5b",
     ollama_base_url="http://localhost:11434",
+    api_key_env=None,
     max_chars=12000,
 ):
     body = body[:max_chars]
@@ -58,19 +61,35 @@ def summarize_article_with_local_llm(
             },
         ],
         "stream": False,
-        "format": schema,
         "options": {
             "temperature": 0.2,
         },
     }
 
-    response = requests.post(url, json=payload, timeout=180)
+    headers = {}
+    if api_key_env:
+        api_key = os.environ.get(api_key_env)
+        if not api_key:
+            raise RuntimeError(f"缺少环境变量：{api_key_env}")
+        headers["Authorization"] = f"Bearer {api_key}"
+    else:
+        payload["format"] = schema
+
+    response = requests.post(url, json=payload, headers=headers, timeout=180)
     response.raise_for_status()
 
     data = response.json()
-    content = data["message"]["content"]
+    content = data["message"]["content"].strip()
+    fenced_json = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL)
+    if fenced_json:
+        content = fenced_json.group(1)
 
-    return json.loads(content)
+    result = json.loads(content)
+    if not isinstance(result.get("summary"), str):
+        raise ValueError("Ollama 返回结果缺少 summary")
+    if not isinstance(result.get("key_points"), list):
+        raise ValueError("Ollama 返回结果缺少 key_points")
+    return result
 
 
 def fallback_summary(title, body, max_summary_chars=120):
@@ -111,6 +130,7 @@ def summarize_article(title, body, summary_config):
         body=body,
         model=ollama_config.get("model", "qwen2.5:1.5b"),
         ollama_base_url=ollama_config.get("base_url", "http://localhost:11434"),
+        api_key_env=ollama_config.get("api_key_env"),
     )
 
 

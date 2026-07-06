@@ -5,6 +5,12 @@ on:
     # GitHub cron uses UTC. 00:00 UTC is 08:00 in Beijing.
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      verify_ollama:
+        description: Verify Ollama Cloud before running
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,8 +49,16 @@ jobs:
           test -n "$CONFIG_YAML"
           printf '%s' "$CONFIG_YAML" > config.yaml
 
+      - name: Verify Ollama Cloud
+        if: ${{ inputs.verify_ollama }}
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          PYTHONPATH=src python -c "from notice_crawler.summarizer import summarize_article_with_local_llm as s; r=s('连通性测试', '请确认云端总结服务可用。', model='qwen3.5:397b', ollama_base_url='https://ollama.com', api_key_env='OLLAMA_API_KEY'); print('Ollama Cloud 验证成功：', bool(r.get('summary')))"
+
       - name: Run crawler
         env:
           QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
           QQ_EMAIL_AUTH_CODE: ${{ secrets.QQ_EMAIL_AUTH_CODE }}
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: python main.py

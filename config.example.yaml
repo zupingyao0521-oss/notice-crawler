@@ -2,8 +2,9 @@ summary:
   engine: ollama
 
   ollama:
-    base_url: http://localhost:11434
-    model: qwen2.5:1.5b
+    base_url: https://ollama.com
+    model: qwen3.5:397b
+    api_key_env: OLLAMA_API_KEY
 
 email:
   sender_env: QQ_EMAIL
