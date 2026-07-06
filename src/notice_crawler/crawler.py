@@ -1,17 +1,72 @@
 from urllib.parse import urljoin
 import re
+import time
 
 import requests
 from bs4 import BeautifulSoup
 
 
-def get_school_notices(url, item_selector, title_selector="a", date_selector=None):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+class FetchError(RuntimeError):
+    def __init__(self, url, attempts, last_error):
+        self.url = url
+        self.attempts = attempts
+        self.last_error = last_error
+        super().__init__(f"请求失败（尝试 {attempts} 次）：{last_error}")
 
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
+
+def request_with_retry(
+    url,
+    max_attempts=3,
+    backoff_seconds=(2, 4, 8),
+    timeout=10,
+    request_get=requests.get,
+    sleep=time.sleep,
+):
+    max_attempts = max(1, int(max_attempts))
+    delays = [max(0, float(value)) for value in backoff_seconds]
+
+    for attempt in range(1, max_attempts + 1):
+        last_error = None
+        try:
+            response = request_get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            return response
+        except requests.HTTPError as error:
+            last_error = error
+            status_code = error.response.status_code if error.response is not None else None
+            should_retry = status_code is not None and status_code >= 500
+        except (requests.ConnectionError, requests.Timeout) as error:
+            last_error = error
+            should_retry = True
+        except requests.RequestException as error:
+            last_error = error
+            should_retry = False
+
+        if not should_retry or attempt == max_attempts:
+            raise FetchError(url, attempt, last_error) from last_error
+
+        delay = delays[min(attempt - 1, len(delays) - 1)] if delays else 0
+        print(f"请求失败，{delay:g} 秒后进行第 {attempt + 1} 次尝试：{url} - {last_error}")
+        sleep(delay)
+
+
+def get_school_notices(
+    url,
+    item_selector,
+    title_selector="a",
+    date_selector=None,
+    max_attempts=3,
+    backoff_seconds=(2, 4, 8),
+):
+    response = request_with_retry(
+        url,
+        max_attempts=max_attempts,
+        backoff_seconds=backoff_seconds,
+    )
     response.encoding = response.apparent_encoding
 
     soup = BeautifulSoup(response.text, "lxml")
@@ -56,13 +111,17 @@ def get_school_notices(url, item_selector, title_selector="a", date_selector=Non
     return notices
 
 
-def get_article_text(url, content_selector=None):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
+def get_article_text(
+    url,
+    content_selector=None,
+    max_attempts=3,
+    backoff_seconds=(2, 4, 8),
+):
+    response = request_with_retry(
+        url,
+        max_attempts=max_attempts,
+        backoff_seconds=backoff_seconds,
+    )
     response.encoding = response.apparent_encoding
 
     soup = BeautifulSoup(response.text, "lxml")

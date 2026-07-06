@@ -18,6 +18,13 @@ output:
 state:
   processed_links_path: data/processed_links.json
 
+retry:
+  max_attempts: 3
+  backoff_seconds:
+    - 2
+    - 4
+    - 8
+
 defaults:
   item_selector: tr
   title_selector: .news-title a

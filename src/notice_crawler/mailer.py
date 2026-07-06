@@ -1,9 +1,14 @@
 import html
 import os
 import smtplib
+import platform
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
+
+
+BEIJING_TIMEZONE = timezone(timedelta(hours=8), name="CST")
 
 
 def build_articles_html(articles):
@@ -164,6 +169,94 @@ def send_email_with_excel(
         subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=excel_path.name,
     )
+
+    with smtplib.SMTP_SSL("smtp.qq.com", 465) as smtp:
+        smtp.login(sender_email, auth_code)
+        smtp.send_message(message)
+
+
+def build_alert_bodies(failures, success_count, environment=None, now=None):
+    now = now or datetime.now(BEIJING_TIMEZONE)
+    if environment is None:
+        runtime = f"{platform.system()} / Python {platform.python_version()}"
+        environment = f"GitHub Actions ({runtime})" if os.environ.get("GITHUB_ACTIONS") else runtime
+    failed_count = len(failures)
+    failure_time = now.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    text_sections = []
+    html_sections = []
+    for index, failure in enumerate(failures, start=1):
+        name = str(failure.get("name", "未知目标"))
+        url = str(failure.get("url", ""))
+        error = str(failure.get("error", "未知错误"))
+        attempts = int(failure.get("attempts", 1))
+        kind = str(failure.get("kind", "抓取任务"))
+        text_sections.append(
+            f"{index}. [{kind}] {name}\n"
+            f"   URL: {url}\n"
+            f"   错误: {error}\n"
+            f"   尝试次数: {attempts}"
+        )
+        html_sections.append(f"""
+        <tr><td style="padding:18px 0;border-top:1px solid #fecaca;">
+          <div style="color:#991b1b;font-size:15px;font-weight:700;">{index}. [{html.escape(kind)}] {html.escape(name)}</div>
+          <div style="padding-top:8px;color:#475569;font-size:13px;line-height:21px;word-break:break-all;">
+            <strong>网址：</strong>{html.escape(url)}<br>
+            <strong>错误：</strong>{html.escape(error)}<br>
+            <strong>尝试次数：</strong>{attempts}
+          </div>
+        </td></tr>
+        """)
+
+    text_body = (
+        "Notice Crawler 抓取任务出现失败。\n\n"
+        f"失败时间：{failure_time}\n"
+        f"运行环境：{environment}\n"
+        f"成功数量：{success_count}\n"
+        f"失败数量：{failed_count}\n\n"
+        + "\n\n".join(text_sections)
+    )
+    html_body = f"""
+    <!doctype html><html lang="zh-CN"><body style="margin:0;background:#fef2f2;font-family:Arial,'Microsoft YaHei',sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-collapse:collapse;">
+          <tr><td style="padding:28px 30px;background:#991b1b;color:#ffffff;">
+            <div style="font-size:12px;font-weight:700;">NOTICE CRAWLER ALERT</div>
+            <div style="padding-top:6px;font-size:24px;font-weight:700;">通知抓取失败</div>
+          </td></tr>
+          <tr><td style="padding:24px 30px;color:#334155;font-size:14px;line-height:23px;">
+            <strong>失败时间：</strong>{html.escape(failure_time)}<br>
+            <strong>运行环境：</strong>{html.escape(environment)}<br>
+            <strong>成功数量：</strong>{success_count}<br>
+            <strong>失败数量：</strong>{failed_count}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border-collapse:collapse;">{''.join(html_sections)}</table>
+          </td></tr>
+        </table>
+      </td></tr></table>
+    </body></html>
+    """
+    return text_body, html_body
+
+
+def send_alert_email(
+    to_emails,
+    failures,
+    success_count,
+    sender_env="QQ_EMAIL",
+    auth_code_env="QQ_EMAIL_AUTH_CODE",
+):
+    sender_email = os.environ[sender_env]
+    auth_code = os.environ[auth_code_env]
+    if isinstance(to_emails, str):
+        to_emails = [to_emails]
+
+    text_body, html_body = build_alert_bodies(failures, success_count)
+    message = EmailMessage()
+    message["From"] = formataddr(("Notice Crawler 报警", sender_email))
+    message["To"] = ", ".join(to_emails)
+    message["Subject"] = "【Notice Crawler 报警】通知抓取失败"
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
 
     with smtplib.SMTP_SSL("smtp.qq.com", 465) as smtp:
         smtp.login(sender_email, auth_code)
