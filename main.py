@@ -9,6 +9,7 @@ SRC_DIR = BASE_DIR / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 from notice_crawler.config_loader import get_sites_from_config, load_config
+from notice_crawler.classifier import classify_article, sort_articles_by_importance
 from notice_crawler.crawler import get_article_text, get_school_notices
 from notice_crawler.excel_writer import save_articles_to_excel
 from notice_crawler.mailer import send_email_with_excel
@@ -77,15 +78,16 @@ def build_articles(new_notices, summary_config):
             summary_config=summary_config,
         )
 
-        articles.append({
+        article = {
             "title": title,
             "link": link,
             "date": notice.get("date", ""),
             "summary": summary_result["summary"],
             "key_points": summary_result["key_points"],
-        })
+        }
+        articles.append(classify_article(article, body=body))
 
-    return articles
+    return sort_articles_by_importance(articles)
 
 
 def main():

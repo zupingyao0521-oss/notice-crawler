@@ -14,6 +14,14 @@ def build_articles_html(articles):
         link = html.escape(article.get("link", ""), quote=True)
         date = html.escape(article.get("date", ""))
         summary = html.escape(article.get("summary", ""))
+        importance = html.escape(article.get("importance", "一般"))
+        tags = article.get("tags", ["其他"])
+        tags_text = " · ".join(html.escape(str(tag)) for tag in tags)
+        importance_color = {
+            "紧急": "#dc2626",
+            "重要": "#d97706",
+            "一般": "#64748b",
+        }.get(article.get("importance"), "#64748b")
 
         key_points = article.get("key_points", [])
         key_points_html = "".join(
@@ -39,7 +47,8 @@ def build_articles_html(articles):
               <tr>
                 <td style="padding:26px 0 8px;vertical-align:top;">
                   <span style="display:inline-block;margin-right:8px;color:#2563eb;font-size:13px;font-weight:700;line-height:20px;">{index:02d}</span>
-                  <span style="color:#64748b;font-size:13px;line-height:20px;">{date or '日期未注明'}</span>
+                  <span style="display:inline-block;margin-right:8px;color:{importance_color};font-size:13px;font-weight:700;line-height:20px;">{importance}</span>
+                  <span style="color:#64748b;font-size:13px;line-height:20px;">{date or '日期未注明'} &nbsp;|&nbsp; {tags_text}</span>
                 </td>
               </tr>
               <tr>

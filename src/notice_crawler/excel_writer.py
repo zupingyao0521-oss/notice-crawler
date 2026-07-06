@@ -11,7 +11,7 @@ def save_articles_to_excel(articles, file_path="articles.xlsx"):
     sheet = workbook.active
     sheet.title = "通知公告"
 
-    headers = ["标题", "链接", "发布日期", "一句话概括", "要点"]
+    headers = ["重要度", "标签", "标题", "链接", "发布日期", "一句话概括", "要点"]
     sheet.append(headers)
 
     for article in articles:
@@ -20,16 +20,26 @@ def save_articles_to_excel(articles, file_path="articles.xlsx"):
         date = article.get("date", "")
         summary = article.get("summary", "")
         key_points = article.get("key_points", [])
+        tags = article.get("tags", [])
 
         if isinstance(key_points, list):
             key_points_text = "\n".join(key_points)
         else:
             key_points_text = str(key_points)
 
-        row = [title, link, date, summary, key_points_text]
+        tags_text = "、".join(tags) if isinstance(tags, list) else str(tags)
+        row = [
+            article.get("importance", "一般"),
+            tags_text,
+            title,
+            link,
+            date,
+            summary,
+            key_points_text,
+        ]
         sheet.append(row)
 
-        link_cell = sheet.cell(row=sheet.max_row, column=2)
+        link_cell = sheet.cell(row=sheet.max_row, column=4)
         link_cell.hyperlink = link
         link_cell.style = "Hyperlink"
 
@@ -43,10 +53,12 @@ def save_articles_to_excel(articles, file_path="articles.xlsx"):
                 wrap_text=True,
             )
 
-    sheet.column_dimensions["A"].width = 35
-    sheet.column_dimensions["B"].width = 45
-    sheet.column_dimensions["C"].width = 15
-    sheet.column_dimensions["D"].width = 40
-    sheet.column_dimensions["E"].width = 50
+    sheet.column_dimensions["A"].width = 10
+    sheet.column_dimensions["B"].width = 20
+    sheet.column_dimensions["C"].width = 35
+    sheet.column_dimensions["D"].width = 45
+    sheet.column_dimensions["E"].width = 15
+    sheet.column_dimensions["F"].width = 40
+    sheet.column_dimensions["G"].width = 50
 
     workbook.save(file_path)
