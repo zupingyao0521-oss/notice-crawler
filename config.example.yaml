@@ -1,0 +1,29 @@
+summary:
+  engine: ollama
+
+  ollama:
+    base_url: http://localhost:11434
+    model: qwen2.5:1.5b
+
+email:
+  sender_env: QQ_EMAIL
+  auth_code_env: QQ_EMAIL_AUTH_CODE
+  subject: 学校通知公告汇总
+  recipients:
+    - receiver@example.com
+
+output:
+  excel_path: outputs/学校通知汇总.xlsx
+
+state:
+  processed_links_path: data/processed_links.json
+
+defaults:
+  item_selector: tr
+  title_selector: .news-title a
+  date_selector: .news-date
+  content_selector: .wp_articlecontent
+
+sites:
+  - name: 广西师范大学教务处学生公告
+    list_url: http://www.dean.gxnu.edu.cn/xsgg/list.htm
