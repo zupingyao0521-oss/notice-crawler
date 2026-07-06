@@ -3,6 +3,7 @@ import os
 import smtplib
 import sys
 import traceback
+import re
 
 BASE_DIR = Path(__file__).resolve().parent
 SRC_DIR = BASE_DIR / "src"
@@ -37,7 +38,14 @@ def failure_record(kind, name, url, error):
     }
 
 
-def collect_new_notices(sites, processed_links, retry_config):
+def notice_date_key(notice):
+    numbers = re.findall(r"\d+", str(notice.get("date", "")))
+    if len(numbers) >= 3:
+        return tuple(map(int, numbers[:3]))
+    return (0, 0, 0)
+
+
+def collect_new_notices(sites, processed_links, retry_config, force_latest=False):
     new_notices = []
     failures = []
 
@@ -76,12 +84,19 @@ def collect_new_notices(sites, processed_links, retry_config):
         for notice in notices:
             link = notice["link"]
 
-            if link in processed_links:
+            if not force_latest and link in processed_links:
                 continue
 
             notice["site_name"] = site["name"]
             notice["content_selector"] = site["content_selector"]
             new_notices.append(notice)
+
+    if force_latest and new_notices:
+        newest = max(
+            enumerate(new_notices),
+            key=lambda item: (notice_date_key(item[1]), -item[0]),
+        )[1]
+        return [newest], failures
 
     return new_notices, failures
 
@@ -157,6 +172,7 @@ def main():
         "backoff_seconds": retry_section.get("backoff_seconds", [2, 4, 8]),
     }
     email_config = config["email"]
+    force_latest = os.environ.get("FORCE_LATEST_NOTICE", "").lower() == "true"
 
     state_config = config.get("state", {})
     database_path = resolve_project_path(
@@ -177,6 +193,7 @@ def main():
         sites=sites,
         processed_links=processed_links,
         retry_config=retry_config,
+        force_latest=force_latest,
     )
 
     if not new_notices:

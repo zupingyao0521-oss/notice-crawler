@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      resend_latest:
+        description: Send the latest notice even if already processed
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -61,4 +66,5 @@ jobs:
           QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
           QQ_EMAIL_AUTH_CODE: ${{ secrets.QQ_EMAIL_AUTH_CODE }}
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          FORCE_LATEST_NOTICE: ${{ inputs.resend_latest }}
         run: python main.py
