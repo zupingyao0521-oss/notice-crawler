@@ -7,50 +7,114 @@ from pathlib import Path
 
 
 def build_articles_html(articles):
-    rows = []
+    article_sections = []
 
-    for article in articles:
+    for index, article in enumerate(articles, start=1):
         title = html.escape(article.get("title", ""))
-        link = html.escape(article.get("link", ""))
+        link = html.escape(article.get("link", ""), quote=True)
         date = html.escape(article.get("date", ""))
         summary = html.escape(article.get("summary", ""))
 
         key_points = article.get("key_points", [])
         key_points_html = "".join(
-            f"<li>{html.escape(str(point))}</li>"
+            f"""
+            <tr>
+              <td style="width:18px;padding:3px 0;vertical-align:top;color:#2563eb;font-size:15px;line-height:22px;">&#8226;</td>
+              <td style="padding:3px 0;color:#334155;font-size:14px;line-height:22px;">{html.escape(str(point))}</td>
+            </tr>
+            """
             for point in key_points
         )
+        if not key_points_html:
+            key_points_html = """
+            <tr>
+              <td style="padding:3px 0;color:#64748b;font-size:14px;line-height:22px;">暂无提炼要点</td>
+            </tr>
+            """
 
-        rows.append(f"""
+        article_sections.append(f"""
         <tr>
-            <td>{title}</td>
-            <td>{date}</td>
-            <td>{summary}</td>
-            <td><ul>{key_points_html}</ul></td>
-            <td><a href="{link}">查看原文</a></td>
+          <td style="padding:0 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+              <tr>
+                <td style="padding:26px 0 8px;vertical-align:top;">
+                  <span style="display:inline-block;margin-right:8px;color:#2563eb;font-size:13px;font-weight:700;line-height:20px;">{index:02d}</span>
+                  <span style="color:#64748b;font-size:13px;line-height:20px;">{date or '日期未注明'}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0;color:#0f172a;font-size:19px;font-weight:700;line-height:28px;">{title}</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 0 0;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:#f8fafc;border-left:4px solid #2563eb;">
+                    <tr>
+                      <td style="padding:14px 16px;color:#334155;font-size:14px;line-height:23px;">{summary or '暂无摘要'}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 0 5px;color:#0f172a;font-size:13px;font-weight:700;line-height:20px;">通知要点</td>
+              </tr>
+              <tr>
+                <td>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                    {key_points_html}
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:18px 0 26px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                    <tr>
+                      <td bgcolor="#2563eb" style="background-color:#2563eb;">
+                        <a href="{link}" style="display:inline-block;padding:10px 18px;color:#ffffff;font-size:14px;font-weight:700;line-height:20px;text-decoration:none;">查看通知原文&nbsp;&rarr;</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td height="1" style="height:1px;background-color:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
         </tr>
         """)
 
     return f"""
-    <html>
-    <body>
-        <h2>学校通知公告汇总</h2>
-        <p>以下是本次抓取并总结的文章列表：</p>
-
-        <table border="1" cellpadding="8" cellspacing="0">
-            <thead>
-                <tr>
-                    <th>标题</th>
-                    <th>发布日期</th>
-                    <th>一句话概括</th>
-                    <th>要点</th>
-                    <th>链接</th>
-                </tr>
-            </thead>
-            <tbody>
-                {''.join(rows)}
-            </tbody>
-        </table>
+    <!doctype html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>学校通知公告汇总</title>
+    </head>
+    <body style="margin:0;padding:0;background-color:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;">
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">本次共整理 {len(articles)} 条学校通知，摘要与重点已为你归纳。</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:#eef2f7;">
+        <tr>
+          <td align="center" style="padding:28px 12px;">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;border-collapse:collapse;background-color:#ffffff;">
+              <tr>
+                <td bgcolor="#0f172a" style="padding:34px 32px;background-color:#0f172a;">
+                  <div style="color:#93c5fd;font-size:12px;font-weight:700;line-height:18px;">DAILY NOTICE DIGEST</div>
+                  <div style="padding-top:7px;color:#ffffff;font-size:27px;font-weight:700;line-height:36px;">学校通知公告汇总</div>
+                  <div style="padding-top:9px;color:#cbd5e1;font-size:14px;line-height:22px;">本次共发现 <strong style="color:#ffffff;">{len(articles)}</strong> 条新通知，重要信息已整理如下。</div>
+                </td>
+              </tr>
+              {''.join(article_sections)}
+              <tr>
+                <td align="center" style="padding:24px 32px 30px;color:#64748b;font-size:12px;line-height:20px;">
+                  完整数据已附在 Excel 文件中<br>
+                  此邮件由 Notice Crawler 自动整理并发送
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
     """
