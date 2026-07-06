@@ -14,7 +14,7 @@ from notice_crawler.classifier import classify_article, sort_articles_by_importa
 from notice_crawler.crawler import FetchError, get_article_text, get_school_notices
 from notice_crawler.excel_writer import save_articles_to_excel
 from notice_crawler.mailer import send_alert_email, send_email_with_excel
-from notice_crawler.state import load_processed_links, save_processed_links
+from notice_crawler.state import ProcessedArticleStore
 from notice_crawler.summarizer import summarize_article_safe
 
 
@@ -121,6 +121,7 @@ def build_articles(new_notices, summary_config, retry_config):
             "title": title,
             "link": link,
             "date": notice.get("date", ""),
+            "site_name": notice.get("site_name", ""),
             "summary": summary_result["summary"],
             "key_points": summary_result["key_points"],
         }
@@ -157,12 +158,20 @@ def main():
     }
     email_config = config["email"]
 
-    processed_links_path = resolve_project_path(
-        config.get("state", {}).get("processed_links_path", "processed_links.json")
+    state_config = config.get("state", {})
+    database_path = resolve_project_path(
+        state_config.get("database_path", "data/notice_crawler.db")
+    )
+    legacy_json_path = resolve_project_path(
+        state_config.get("legacy_json_path", "data/processed_links.json")
     )
     excel_path = resolve_project_path(config["output"]["excel_path"])
 
-    processed_links = load_processed_links(processed_links_path)
+    article_store = ProcessedArticleStore(
+        database_path=database_path,
+        legacy_json_path=legacy_json_path,
+    )
+    processed_links = article_store.load_links()
 
     new_notices, failures = collect_new_notices(
         sites=sites,
@@ -226,9 +235,11 @@ def main():
         email_config=email_config,
     )
 
-    processed_links.update(article["link"] for article in articles)
-    save_processed_links(processed_links, processed_links_path)
-    print(f"已更新去重记录：{processed_links_path}")
+    inserted_count = article_store.add_articles(articles)
+    print(
+        f"已写入 {inserted_count} 条浏览记录，"
+        f"数据库共 {article_store.count()} 条：{database_path}"
+    )
 
 
 if __name__ == "__main__":

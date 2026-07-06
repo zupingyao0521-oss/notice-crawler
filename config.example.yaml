@@ -16,7 +16,8 @@ output:
   excel_path: outputs/学校通知汇总.xlsx
 
 state:
-  processed_links_path: data/processed_links.json
+  database_path: data/notice_crawler.db
+  legacy_json_path: data/processed_links.json
 
 retry:
   max_attempts: 3
