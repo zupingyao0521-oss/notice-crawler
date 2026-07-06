@@ -26,7 +26,7 @@ class OllamaSummarizerTests(unittest.TestCase):
             result = summarize_article_with_local_llm(
                 title="测试通知",
                 body="正文",
-                model="qwen3.5:397b",
+                model="gpt-oss:20b",
                 ollama_base_url="https://ollama.com",
                 api_key_env="OLLAMA_API_KEY",
             )

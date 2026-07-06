@@ -3,7 +3,7 @@ summary:
 
   ollama:
     base_url: https://ollama.com
-    model: qwen3.5:397b
+    model: gpt-oss:20b
     api_key_env: OLLAMA_API_KEY
 
 email:

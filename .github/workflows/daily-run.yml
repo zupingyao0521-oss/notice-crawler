@@ -54,7 +54,7 @@ jobs:
         env:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
-          PYTHONPATH=src python -c "from notice_crawler.summarizer import summarize_article_with_local_llm as s; r=s('连通性测试', '请确认云端总结服务可用。', model='qwen3.5:397b', ollama_base_url='https://ollama.com', api_key_env='OLLAMA_API_KEY'); print('Ollama Cloud 验证成功：', bool(r.get('summary')))"
+          PYTHONPATH=src python -c "from notice_crawler.summarizer import summarize_article_with_local_llm as s; r=s('连通性测试', '请确认云端总结服务可用。', model='gpt-oss:20b', ollama_base_url='https://ollama.com', api_key_env='OLLAMA_API_KEY'); print('Ollama Cloud 验证成功：', bool(r.get('summary')))"
 
       - name: Run crawler
         env:
